@@ -1,25 +1,36 @@
 # Dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp/
 .pnp.js
-package-lock.json
-yarn.lock
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Testing
-/coverage
+coverage/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+nosetests.xml
+coverage.xml
 
-# Production
-/build
-/dist
+# Production builds
+build/
+dist/
+*.egg-info/
+.eggs/
 
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE and Editor files
+# Development
 .idea/
 .vscode/
 *.swp
@@ -27,10 +38,116 @@ yarn.lock
 .DS_Store
 Thumbs.db
 
-# Debug logs
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Database
+*.sqlite3
+*.db
+redis-data/
+postgres-data/
+influxdb-data/
+
+# Secrets and environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+
+# AI/ML models and data
+models/
+data/
+*.h5
+*.pkl
+*.joblib
+*.onnx
+
+# Temporary files
+.tmp/
+.temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+
+# Go specific
+*.exe
+*.test
+*.prof
+*.out
+vendor/
+
+# Python specific
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# React/Next.js specific
+.next/
+out/
+.cache/
+.parcel-cache/
+.nuxt/
+.nitro/
+.output/
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Trading system specific
+trading-history/
+backtesting-results/
+forecast-models/
 
 # Optional npm cache directory
 .npm
@@ -49,6 +166,23 @@ yarn-error.log*
 
 # Local Netlify folder
 .netlify
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Virtual Environment
+ENV/
+.env
+.venv
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Python
 *.py[cod]
