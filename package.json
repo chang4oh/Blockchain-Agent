@@ -18,8 +18,8 @@
   "homepage": "https://github.com/chang4oh/Blockchain-Agent#readme",
   "description": "",
   "dependencies": {
-    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "react": "^19.1.0-canary-22e39ea7-20250225",
+    "react-dom": "^19.1.0-canary-22e39ea7-20250225"
   }
 }
