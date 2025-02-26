@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  kong:
+    image: kong:latest
+    environment:
+      KONG_DATABASE: "off"
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yml
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    volumes:
+      - ./config/kong.yml:/usr/local/kong/declarative/kong.yml
+    networks:
+      - crypto-network
+
+  # Market Data Service
+  market-data:
+    build:
+      context: ./services/market-data
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+    depends_on:
+      - redis
+    networks:
+      - crypto-network
+
+  # Risk Management Service
+  risk-management:
+    build:
+      context: ./services/risk-management
+      dockerfile: Dockerfile
+    environment:
+      - POSTGRES_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/crypto
+    depends_on:
+      - postgres
+    networks:
+      - crypto-network
+
+  # Backtesting Service
+  backtesting:
+    build:
+      context: ./services/backtesting
+      dockerfile: Dockerfile
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+    depends_on:
+      - influxdb
+    networks:
+      - crypto-network
+
+  # AI Forecasting Service
+  forecasting:
+    build:
+      context: ./services/forecasting
+      dockerfile: Dockerfile
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - MODEL_PATH=/app/models
+    volumes:
+      - ./models:/app/models
+    depends_on:
+      - influxdb
+    networks:
+      - crypto-network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - crypto-network
+
+  # Redis (for caching and real-time data)
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - crypto-network
+
+  # PostgreSQL (for user data and trade history)
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=crypto
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - crypto-network
+
+  # InfluxDB (for time series data)
+  influxdb:
+    image: influxdb:2.0
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=crypto
+      - DOCKER_INFLUXDB_INIT_BUCKET=market_data
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+    networks:
+      - crypto-network
+
+volumes:
+  redis-data:
+  postgres-data:
+  influxdb-data:
+
+networks:
+  crypto-network:
+    driver: bridge 

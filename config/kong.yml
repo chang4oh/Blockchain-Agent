@@ -1,0 +1,66 @@
+_format_version: "2.1"
+_transform: true
+
+services:
+  - name: market-data-service
+    url: http://market-data:8000
+    routes:
+      - name: market-data-route
+        paths:
+          - /api/v1/market-data
+        strip_path: true
+
+  - name: risk-management-service
+    url: http://risk-management:8080
+    routes:
+      - name: risk-management-route
+        paths:
+          - /api/v1/risk-management
+        strip_path: true
+
+  - name: backtesting-service
+    url: http://backtesting:8000
+    routes:
+      - name: backtesting-route
+        paths:
+          - /api/v1/backtesting
+        strip_path: true
+
+  - name: forecasting-service
+    url: http://forecasting:8000
+    routes:
+      - name: forecasting-route
+        paths:
+          - /api/v1/forecasting
+        strip_path: true
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - '*'
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Content-Type
+        - Authorization
+      exposed_headers:
+        - '*'
+      credentials: true
+      max_age: 3600
+
+  - name: rate-limiting
+    config:
+      minute: 100
+      hour: 1000
+      policy: local
+
+  - name: jwt
+    config:
+      secret_is_base64: false
+      claims_to_verify:
+        - exp 
