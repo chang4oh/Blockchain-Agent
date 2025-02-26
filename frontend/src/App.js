@@ -1,10 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+
+  // Handle hash-based navigation
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'settings') {
+        setCurrentPage('settings');
+      } else {
+        setCurrentPage('dashboard');
+      }
+    };
+
+    // Set initial page based on hash
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
+
+  const navigateTo = (page) => {
+    window.location.hash = page;
+    setCurrentPage(page);
+  };
 
   return (
     <div className="App">
@@ -16,7 +43,7 @@ function App() {
           <li>
             <button 
               className={currentPage === 'dashboard' ? 'active' : ''} 
-              onClick={() => setCurrentPage('dashboard')}
+              onClick={() => navigateTo('dashboard')}
             >
               Dashboard
             </button>
@@ -24,7 +51,7 @@ function App() {
           <li>
             <button 
               className={currentPage === 'settings' ? 'active' : ''} 
-              onClick={() => setCurrentPage('settings')}
+              onClick={() => navigateTo('settings')}
             >
               Settings
             </button>

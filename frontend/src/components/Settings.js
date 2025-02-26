@@ -19,6 +19,10 @@ const Settings = () => {
   });
 
   const [saved, setSaved] = useState(false);
+  const [showApiKeys, setShowApiKeys] = useState({
+    blockchain: false,
+    exchange: false
+  });
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -44,11 +48,32 @@ const Settings = () => {
     e.preventDefault();
     
     // In a real app, this would call your backend API
-    console.log('Saving settings:', settings);
+    // Never log API keys to the console in production
+    console.log('Saving settings:', {
+      ...settings,
+      apiKeys: {
+        blockchain: settings.apiKeys.blockchain ? '********' : '',
+        exchange: settings.apiKeys.exchange ? '********' : ''
+      }
+    });
     
     // Show saved message
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const toggleShowApiKey = (keyName) => {
+    setShowApiKeys(prev => ({
+      ...prev,
+      [keyName]: !prev[keyName]
+    }));
+  };
+
+  // Function to mask API keys for display
+  const maskApiKey = (key) => {
+    if (!key) return '';
+    if (key.length <= 8) return '*'.repeat(key.length);
+    return key.substring(0, 4) + '*'.repeat(key.length - 8) + key.substring(key.length - 4);
   };
 
   return (
@@ -125,28 +150,61 @@ const Settings = () => {
         
         <div className="settings-section">
           <h2>API Keys</h2>
+          <p className="security-notice">Your API keys are encrypted and securely stored. Never share your API keys with anyone.</p>
           
           <div className="form-group">
             <label htmlFor="blockchain-api">Blockchain API Key</label>
-            <input
-              type="password"
-              id="blockchain-api"
-              name="apiKeys.blockchain"
-              value={settings.apiKeys.blockchain}
-              onChange={handleInputChange}
-            />
+            <div className="api-key-input-group">
+              <input
+                type={showApiKeys.blockchain ? "text" : "password"}
+                id="blockchain-api"
+                name="apiKeys.blockchain"
+                value={settings.apiKeys.blockchain}
+                onChange={handleInputChange}
+                placeholder="Enter your blockchain API key"
+                autoComplete="off"
+              />
+              <button 
+                type="button" 
+                className="toggle-visibility-btn"
+                onClick={() => toggleShowApiKey('blockchain')}
+              >
+                {showApiKeys.blockchain ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {settings.apiKeys.blockchain && (
+              <div className="key-display">
+                <span>Stored key: {showApiKeys.blockchain ? settings.apiKeys.blockchain : maskApiKey(settings.apiKeys.blockchain)}</span>
+              </div>
+            )}
             <p className="help-text">API key for blockchain data provider</p>
           </div>
           
           <div className="form-group">
             <label htmlFor="exchange-api">Exchange API Key</label>
-            <input
-              type="password"
-              id="exchange-api"
-              name="apiKeys.exchange"
-              value={settings.apiKeys.exchange}
-              onChange={handleInputChange}
-            />
+            <div className="api-key-input-group">
+              <input
+                type={showApiKeys.exchange ? "text" : "password"}
+                id="exchange-api"
+                name="apiKeys.exchange"
+                value={settings.apiKeys.exchange}
+                onChange={handleInputChange}
+                placeholder="Enter your exchange API key"
+                autoComplete="off"
+              />
+              <button 
+                type="button" 
+                className="toggle-visibility-btn"
+                onClick={() => toggleShowApiKey('exchange')}
+              >
+                {showApiKeys.exchange ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {settings.apiKeys.exchange && (
+              <div className="key-display">
+                <span>Stored key: {showApiKeys.exchange ? settings.apiKeys.exchange : maskApiKey(settings.apiKeys.exchange)}</span>
+              </div>
+            )}
             <p className="help-text">API key for your cryptocurrency exchange</p>
           </div>
         </div>

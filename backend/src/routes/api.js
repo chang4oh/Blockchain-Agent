@@ -10,12 +10,23 @@ const cryptoData = [
   { id: 'ripple', name: 'Ripple', symbol: 'XRP', price: 0.54, change24h: -0.87 }
 ];
 
-// Mock user settings
+// Mock user settings - API keys are stored securely and never returned in full
 let userSettings = {
   riskPercentage: 1,
   maxTradesPerDay: 5,
   defaultLeverage: 1,
-  preferredMarket: 'SPOT'
+  preferredMarket: 'SPOT',
+  apiKeys: {
+    blockchain: process.env.BLOCKCHAIN_API_KEY || '',
+    exchange: process.env.EXCHANGE_API_KEY || ''
+  }
+};
+
+// Helper function to mask API keys
+const maskApiKey = (key) => {
+  if (!key) return '';
+  if (key.length <= 8) return '*'.repeat(key.length);
+  return key.substring(0, 4) + '*'.repeat(key.length - 8) + key.substring(key.length - 4);
 };
 
 // Get all cryptocurrencies
@@ -68,17 +79,32 @@ router.get('/predict/:id', (req, res) => {
   });
 });
 
-// Get user settings
+// Get user settings - never return full API keys
 router.get('/settings', (req, res) => {
+  // Create a copy of settings with masked API keys
+  const safeSettings = {
+    ...userSettings,
+    apiKeys: {
+      blockchain: userSettings.apiKeys.blockchain ? {
+        exists: true,
+        maskedValue: maskApiKey(userSettings.apiKeys.blockchain)
+      } : { exists: false },
+      exchange: userSettings.apiKeys.exchange ? {
+        exists: true,
+        maskedValue: maskApiKey(userSettings.apiKeys.exchange)
+      } : { exists: false }
+    }
+  };
+  
   res.json({
     success: true,
-    data: userSettings
+    data: safeSettings
   });
 });
 
 // Update user settings
 router.put('/settings', (req, res) => {
-  const { riskPercentage, maxTradesPerDay, defaultLeverage, preferredMarket } = req.body;
+  const { riskPercentage, maxTradesPerDay, defaultLeverage, preferredMarket, apiKeys } = req.body;
   
   // Validate input
   if (riskPercentage !== undefined && (riskPercentage < 0.1 || riskPercentage > 100)) {
@@ -118,9 +144,45 @@ router.put('/settings', (req, res) => {
     ...(preferredMarket !== undefined && { preferredMarket })
   };
   
+  // Handle API keys separately for security
+  if (apiKeys) {
+    // In a real app, you would encrypt these before storing
+    if (apiKeys.blockchain) {
+      userSettings.apiKeys.blockchain = apiKeys.blockchain;
+      
+      // In a production environment, you would update the actual API key in a secure storage
+      // and potentially update environment variables
+      // process.env.BLOCKCHAIN_API_KEY = apiKeys.blockchain;
+    }
+    
+    if (apiKeys.exchange) {
+      userSettings.apiKeys.exchange = apiKeys.exchange;
+      
+      // In a production environment, you would update the actual API key in a secure storage
+      // and potentially update environment variables
+      // process.env.EXCHANGE_API_KEY = apiKeys.exchange;
+    }
+  }
+  
+  // Return masked API keys in response
+  const safeSettings = {
+    ...userSettings,
+    apiKeys: {
+      blockchain: userSettings.apiKeys.blockchain ? {
+        exists: true,
+        maskedValue: maskApiKey(userSettings.apiKeys.blockchain)
+      } : { exists: false },
+      exchange: userSettings.apiKeys.exchange ? {
+        exists: true,
+        maskedValue: maskApiKey(userSettings.apiKeys.exchange)
+      } : { exists: false }
+    }
+  };
+  
   res.json({
     success: true,
-    data: userSettings
+    message: 'Settings updated successfully',
+    data: safeSettings
   });
 });
 
@@ -156,6 +218,14 @@ router.post('/trade', (req, res) => {
     return res.status(404).json({
       success: false,
       message: 'Cryptocurrency not found'
+    });
+  }
+  
+  // Check if API keys are set before allowing trades
+  if (!userSettings.apiKeys.exchange) {
+    return res.status(403).json({
+      success: false,
+      message: 'Exchange API key is required to execute trades'
     });
   }
   

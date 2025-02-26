@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 
+const API_BASE_URL = 'http://localhost:5000/api';
+
 const Dashboard = () => {
   const [cryptoData, setCryptoData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,16 +10,47 @@ const Dashboard = () => {
   const [predictionData, setPredictionData] = useState(null);
   const [tradeAmount, setTradeAmount] = useState('');
   const [tradeStatus, setTradeStatus] = useState('');
+  const [error, setError] = useState(null);
+  const [apiKeyStatus, setApiKeyStatus] = useState({
+    blockchain: false,
+    exchange: false
+  });
 
-  // Mock data for demonstration
+  // Fetch cryptocurrency data from backend
   useEffect(() => {
-    // In a real app, this would be an API call to your backend
     const fetchData = async () => {
       try {
-        // Simulating API call delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoading(true);
+        setError(null);
         
-        // Mock cryptocurrency data
+        // Fetch cryptocurrency data
+        const response = await fetch(`${API_BASE_URL}/cryptocurrencies`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setCryptoData(result.data);
+        } else {
+          setError(result.message || 'Failed to fetch cryptocurrency data');
+        }
+        
+        // Check API key status
+        const settingsResponse = await fetch(`${API_BASE_URL}/settings`);
+        const settingsResult = await settingsResponse.json();
+        
+        if (settingsResult.success) {
+          setApiKeyStatus({
+            blockchain: settingsResult.data.apiKeys.blockchain.exists,
+            exchange: settingsResult.data.apiKeys.exchange.exists
+          });
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Network error. Please check your connection and try again.');
+        setLoading(false);
+        
+        // Fallback to mock data if API is not available
         const mockData = [
           { id: 'bitcoin', name: 'Bitcoin', symbol: 'BTC', price: 51234.56, change24h: 2.34 },
           { id: 'ethereum', name: 'Ethereum', symbol: 'ETH', price: 2789.12, change24h: -1.45 },
@@ -25,39 +58,92 @@ const Dashboard = () => {
           { id: 'solana', name: 'Solana', symbol: 'SOL', price: 98.76, change24h: 3.21 },
           { id: 'ripple', name: 'Ripple', symbol: 'XRP', price: 0.54, change24h: -0.87 }
         ];
-        
         setCryptoData(mockData);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading(false);
       }
     };
 
     fetchData();
   }, []);
 
-  const handleCryptoSelect = (crypto) => {
+  const handleCryptoSelect = async (crypto) => {
     setSelectedCrypto(crypto);
     
-    // Mock prediction data
-    setPredictionData({
-      currentPrice: crypto.price,
-      prediction24h: crypto.price * (1 + (Math.random() * 0.1 - 0.05)),
-      prediction7d: crypto.price * (1 + (Math.random() * 0.2 - 0.1)),
-      confidence: Math.floor(Math.random() * 30) + 70
-    });
+    try {
+      setError(null);
+      
+      // Fetch prediction data from backend if blockchain API key exists
+      if (apiKeyStatus.blockchain) {
+        const response = await fetch(`${API_BASE_URL}/predict/${crypto.id}`);
+        const result = await response.json();
+        
+        if (result.success) {
+          setPredictionData(result.data);
+          return;
+        }
+      }
+      
+      // Fallback to mock prediction if API key is missing or request fails
+      setPredictionData({
+        currentPrice: crypto.price,
+        prediction24h: crypto.price * (1 + (Math.random() * 0.1 - 0.05)),
+        prediction7d: crypto.price * (1 + (Math.random() * 0.2 - 0.1)),
+        confidence: Math.floor(Math.random() * 30) + 70
+      });
+      
+    } catch (error) {
+      console.error('Error fetching prediction:', error);
+      // Fallback to mock prediction
+      setPredictionData({
+        currentPrice: crypto.price,
+        prediction24h: crypto.price * (1 + (Math.random() * 0.1 - 0.05)),
+        prediction7d: crypto.price * (1 + (Math.random() * 0.2 - 0.1)),
+        confidence: Math.floor(Math.random() * 30) + 70
+      });
+    }
   };
 
-  const handleTrade = (action) => {
+  const handleTrade = async (action) => {
     if (!tradeAmount || isNaN(tradeAmount) || parseFloat(tradeAmount) <= 0) {
       setTradeStatus('Please enter a valid amount');
       return;
     }
+    
+    // Check if exchange API key is set
+    if (!apiKeyStatus.exchange) {
+      setTradeStatus('Exchange API key is required. Please set it in Settings.');
+      setTimeout(() => setTradeStatus(''), 5000);
+      return;
+    }
 
-    // In a real app, this would call your backend API
-    setTradeStatus(`${action} order for ${tradeAmount} ${selectedCrypto.symbol} placed successfully!`);
-    setTradeAmount('');
+    try {
+      setError(null);
+      
+      // Call backend API to execute trade
+      const response = await fetch(`${API_BASE_URL}/trade`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cryptoId: selectedCrypto.id,
+          action: action,
+          amount: parseFloat(tradeAmount)
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setTradeStatus(`${action} order for ${tradeAmount} ${selectedCrypto.symbol} placed successfully!`);
+        setTradeAmount('');
+      } else {
+        setTradeStatus(`Error: ${result.message}`);
+      }
+      
+    } catch (error) {
+      console.error('Error executing trade:', error);
+      setTradeStatus('Network error. Please try again.');
+    }
     
     // Reset status after 3 seconds
     setTimeout(() => setTradeStatus(''), 3000);
@@ -66,6 +152,24 @@ const Dashboard = () => {
   return (
     <div className="dashboard-container">
       <h1>Cryptocurrency Dashboard</h1>
+      
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+      
+      {!apiKeyStatus.blockchain && (
+        <div className="warning-message">
+          <strong>Warning:</strong> Blockchain API key is not set. Predictions are using mock data. 
+          <button 
+            className="settings-link-button"
+            onClick={() => window.location.hash = 'settings'}
+          >
+            Go to Settings
+          </button>
+        </div>
+      )}
       
       <div className="dashboard-grid">
         <div className="crypto-list">
@@ -118,6 +222,9 @@ const Dashboard = () => {
               {predictionData && (
                 <div className="prediction-card">
                   <h3>AI Price Prediction</h3>
+                  {!apiKeyStatus.blockchain && (
+                    <div className="prediction-notice">Using mock prediction data</div>
+                  )}
                   <div className="prediction-grid">
                     <div>
                       <h4>24h Forecast</h4>
@@ -143,6 +250,17 @@ const Dashboard = () => {
               
               <div className="trading-card">
                 <h3>Trading</h3>
+                {!apiKeyStatus.exchange && (
+                  <div className="trading-notice">
+                    Exchange API key is required for trading. 
+                    <button 
+                      className="settings-link-button"
+                      onClick={() => window.location.hash = 'settings'}
+                    >
+                      Set API Key
+                    </button>
+                  </div>
+                )}
                 <div className="trading-form">
                   <input
                     type="number"
@@ -151,10 +269,18 @@ const Dashboard = () => {
                     placeholder={`Amount in ${selectedCrypto.symbol}`}
                   />
                   <div className="trading-buttons">
-                    <button className="buy-button" onClick={() => handleTrade('Buy')}>
+                    <button 
+                      className="buy-button" 
+                      onClick={() => handleTrade('BUY')}
+                      disabled={!apiKeyStatus.exchange}
+                    >
                       Buy
                     </button>
-                    <button className="sell-button" onClick={() => handleTrade('Sell')}>
+                    <button 
+                      className="sell-button" 
+                      onClick={() => handleTrade('SELL')}
+                      disabled={!apiKeyStatus.exchange}
+                    >
                       Sell
                     </button>
                   </div>
