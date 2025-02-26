@@ -82,3 +82,80 @@ class TradeLog(models.Model):
             
             self.pnl = Decimal(str(pnl))
             self.pnl_percentage = Decimal(str((pnl / (float(self.entry_price) * float(self.position_size))) * 100))
+
+class CryptoPriceData(models.Model):
+    symbol = models.CharField(max_length=20)
+    timestamp = models.DateTimeField()
+    open_price = models.DecimalField(max_digits=20, decimal_places=8)
+    high_price = models.DecimalField(max_digits=20, decimal_places=8)
+    low_price = models.DecimalField(max_digits=20, decimal_places=8)
+    close_price = models.DecimalField(max_digits=20, decimal_places=8)
+    volume = models.DecimalField(max_digits=30, decimal_places=8)
+    
+    class Meta:
+        unique_together = ('symbol', 'timestamp')
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['symbol', 'timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.symbol} at {self.timestamp}"
+
+class PricePrediction(models.Model):
+    TIMEFRAME_CHOICES = [
+        ('1h', '1 Hour'),
+        ('4h', '4 Hours'),
+        ('1d', '1 Day'),
+        ('3d', '3 Days'),
+        ('7d', '7 Days'),
+    ]
+    
+    CONFIDENCE_LEVELS = [
+        ('LOW', 'Low'),
+        ('MEDIUM', 'Medium'),
+        ('HIGH', 'High'),
+    ]
+    
+    symbol = models.CharField(max_length=20)
+    prediction_timestamp = models.DateTimeField(auto_now_add=True)
+    target_timestamp = models.DateTimeField()
+    timeframe = models.CharField(max_length=2, choices=TIMEFRAME_CHOICES)
+    predicted_price = models.DecimalField(max_digits=20, decimal_places=8)
+    confidence_level = models.CharField(max_length=6, choices=CONFIDENCE_LEVELS)
+    confidence_score = models.DecimalField(max_digits=5, decimal_places=2, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    model_version = models.CharField(max_length=50)
+    actual_price = models.DecimalField(max_digits=20, decimal_places=8, null=True, blank=True)
+    prediction_error = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-prediction_timestamp']
+        indexes = [
+            models.Index(fields=['symbol', 'target_timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.symbol} prediction for {self.target_timestamp}"
+    
+    def calculate_error(self):
+        if self.actual_price:
+            error_pct = abs((float(self.predicted_price) - float(self.actual_price)) / float(self.actual_price) * 100)
+            self.prediction_error = Decimal(str(error_pct))
+            return self.prediction_error
+        return None
+
+class ModelPerformanceLog(models.Model):
+    model_version = models.CharField(max_length=50)
+    symbol = models.CharField(max_length=20)
+    timeframe = models.CharField(max_length=2, choices=PricePrediction.TIMEFRAME_CHOICES)
+    evaluation_date = models.DateTimeField(auto_now_add=True)
+    mean_absolute_error = models.DecimalField(max_digits=10, decimal_places=4)
+    mean_squared_error = models.DecimalField(max_digits=10, decimal_places=4)
+    r_squared = models.DecimalField(max_digits=5, decimal_places=4)
+    sample_size = models.PositiveIntegerField()
+    
+    class Meta:
+        ordering = ['-evaluation_date']
+    
+    def __str__(self):
+        return f"{self.model_version} performance for {self.symbol} ({self.timeframe})"
