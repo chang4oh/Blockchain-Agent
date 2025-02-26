@@ -16,5 +16,10 @@
     "url": "https://github.com/chang4oh/Blockchain-Agent/issues"
   },
   "homepage": "https://github.com/chang4oh/Blockchain-Agent#readme",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
 }
